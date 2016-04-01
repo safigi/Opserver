@@ -41,6 +41,10 @@ namespace StackExchange.Opserver.Data.SQL
             public decimal CalculatedValue { get; internal set; }
             public int Type { get; internal set; }
 
+-- I don't know why but sometimes performance counters are not unique may be we can remove PK not a big deal the table is small
+-- or add exists to @Pcounters and @CCounters 
+-- examle : MSSQL$TSSQL:Backup Device,Device Throughput Bytes/sec,{575A2100-8D5C-4A0F-9D00-49125DAC1ED5}
+
             internal const string FetchSQL = @"
 Declare @PCounters Table (object_name nvarchar(128),
                           counter_name nvarchar(128),
@@ -54,6 +58,8 @@ Select RTrim(spi.object_name) object_name, RTrim(spi.counter_name) counter_name,
   From sys.dm_os_performance_counters spi
  Where spi.instance_name Not In (Select name From sys.databases)
    And spi.object_name Not Like 'SQLServer:Backup Device%'
+   And not exists (select * from @PCounters as p where p.object_name = spi.object_name
+                   and p.counter_name = spi.instance_name)
 
 WAITFOR DELAY '00:00:01'
 
@@ -69,6 +75,9 @@ Select RTrim(spi.object_name) object_name, RTrim(spi.counter_name) counter_name,
   From sys.dm_os_performance_counters spi
  Where spi.instance_name Not In (Select name From sys.databases)
    And spi.object_name Not Like 'SQLServer:Backup Device%'
+   And not exists (select * from @PCounters as p where p.object_name = spi.object_name
+                   and p.counter_name = spi.instance_name)
+
 
 Select cc.object_name ObjectName,
        cc.counter_name CounterName,
